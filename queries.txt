@@ -1,0 +1,73 @@
+
+1. Find employees whose first names start with a vowel and whose last names end with a consonant 
+
+SELECT * FROM employees 
+where left(first_name, 1) IN ('a', 'e', 'i', 'o', 'u') 
+AND right(last_name, 1) NOT IN ('a', 'e', 'i', 'o', 'u'); 
+
+2. Display total, average, and highest salary for each department using window functions 
+
+SELECT department_id, department_name, employee_id, first_name, last_name, salary, 
+SUM(salary) OVER (PARTITION BY department_id) AS total_salary, 
+AVG(salary) OVER (PARTITION BY department_id) AS avg_salary, 
+MAX(salary) OVER (PARTITION BY department_id) AS max_salary 
+FROM employees e 
+JOIN departments d ON e.department_id = d.department_id; 
+
+3. Fetch all employees, their department, their manager’s name, and their salary 
+
+SELECT e.employee_id, 
+e.first_name AS employee_first_name, 
+e.last_name AS employee_last_name, 
+d.department_name, 
+m.first_name AS manager_first_name, 
+m.last_name AS manager_last_name, 
+e.salary 
+FROM employees e 
+LEFT JOIN employees m ON e.manager_id = m.employee_id 
+LEFT JOIN departments d ON e.department_id = d.department_id; 
+
+4. Create a query using a recursive cte to list all employees and their respective reporting chains (i.e., list the manager’s manager and so on). 
+
+WITH RECURSIVE employeehierarchy as ( 
+SELECT employee_id, first_name, last_name, manager_id, 
+0 AS level
+FROM employees where manager_id IS NULL 
+UNION ALL 
+SELECT e.employee_id, e.first_name, e.last_name, e.manager_id, eh.level + 1 
+FROM employees e 
+JOIN employeehierarchy eh ON e.manager_id = eh.employee_id 
+) 
+SELECT * FROM employeehierarchy; 
+
+5. Fetch details of employees earning above a salary threshold and suggest improvements 
+
+SELECT employee_id, first_name, last_name, department_id, salary 
+FROM employees 
+WHERE salary > 55000; 
+
+6. Create a temporary table for interim sales data and populate it 
+
+CREATE TEMPORARY TABLE product_sales_report ( 
+product_id INT, 
+total_sales DECIMAL(10, 2), 
+avg_sales_per_customer DECIMAL(10, 2), 
+top_salesperson_id INT
+);
+
+
+INSERT INTO product_sales_report (product_id, total_sales, avg_sales_per_customer, top_salesperson_id)
+SELECT 
+p.product_id, 
+SUM(s.amount) AS total_sales, 
+AVG(s.amount / s.customer_count) AS avg_sales_per_customer,
+(
+SELECT s2.salesperson_id
+FROM sales s2
+WHERE s2.product_id = s.product_id
+ORDER BY s2.amount DESC
+LIMIT 1
+) AS top_salesperson_id
+FROM sales s
+JOIN products p ON s.product_id = p.product_id
+GROUP BY p.product_id;
